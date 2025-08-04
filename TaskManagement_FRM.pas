@@ -13,7 +13,7 @@ type
     rEdit: TRectangle;
     radd: TRectangle;
     StringGrid1: TStringGrid;
-    labels, Label1, Label2, Label3, Label4, Label5, Label6: TLabel;
+    labels, Label1, Label2, Label3, Label4, Label5, Label6, Label7: TLabel; // Added Label7 for Deadline
     lbltname: TEdit;
     lblDuration: TEdit;
     cbPriority: TComboBox;
@@ -22,6 +22,7 @@ type
     colDuration: TStringColumn;
     colPriority: TStringColumn;
     colBayType: TStringColumn;
+    colDeadline: TStringColumn; // Added column for Deadline
     cbbayType: TComboBox;
     rLogoImage: TRectangle;
     rLogo: TRectangle;
@@ -48,6 +49,7 @@ type
     lblStaffSchedulerbtn: TEdit;
     LogoutIcon: TRectangle;
     LogoutBtn: TEdit;
+    dtpDeadline: TDateEdit; // Assumed TDateEdit component for the deadline
     procedure FormShow(Sender: TObject);
     procedure raddClick(Sender: TObject);
     procedure rEditClick(Sender: TObject);
@@ -87,6 +89,7 @@ begin
   lblDuration.Text := '';
   cbPriority.ItemIndex := -1;
   cbbayType.ItemIndex := -1;
+  dtpDeadline.Date := Now; // Reset deadline to current date
   SelectedTaskRow := -1;
   StringGrid1.Selected := -1;
 end;
@@ -105,6 +108,50 @@ begin
   if not FmOpti.optiTasks.Active then
     FmOpti.optiTasks.Open;
   LoadTasksToGrid;
+  ClearFields; // Clear fields on form show
+end;
+
+procedure TFTaskManagement.LoadTasksToGrid;
+var
+  i: Integer;
+  DeadlineValue: TDateTime;
+begin
+  StringGrid1.RowCount := 0;
+  SetLength(FTaskIDs, 0);
+
+  // Ensure the dataset is open and filtered
+  FmOpti.optiTasks.Close;
+  FmOpti.optiTasks.Filter := 'ManagerID = ' + IntToStr(CurrentManagerID);
+  FmOpti.optiTasks.Filtered := True;
+  FmOpti.optiTasks.Open;
+
+  FmOpti.optiTasks.First;
+  i := 0;
+  while not FmOpti.optiTasks.Eof do
+  begin
+    StringGrid1.RowCount := i + 1;
+    SetLength(FTaskIDs, i + 1);
+    FTaskIDs[i] := FmOpti.optiTasks.FieldByName('TaskID').AsInteger;
+
+    StringGrid1.Cells[colTaskName.Index, i] := FmOpti.optiTasks.FieldByName('TaskName').AsString;
+    StringGrid1.Cells[colDuration.Index, i] := FmOpti.optiTasks.FieldByName('Duration').AsString;
+    StringGrid1.Cells[colPriority.Index, i] := FmOpti.optiTasks.FieldByName('Priority').AsString;
+    StringGrid1.Cells[colBayType.Index, i] := FmOpti.optiTasks.FieldByName('BayType').AsString;
+
+    // Load and format the deadline
+    if not FmOpti.optiTasks.FieldByName('Deadline').IsNull then
+    begin
+      DeadlineValue := FmOpti.optiTasks.FieldByName('Deadline').AsDateTime;
+      StringGrid1.Cells[colDeadline.Index, i] := FormatDateTime('yyyy-mm-dd', DeadlineValue);
+    end
+    else
+    begin
+      StringGrid1.Cells[colDeadline.Index, i] := 'Not Set';
+    end;
+
+    Inc(i);
+    FmOpti.optiTasks.Next;
+  end;
 end;
 
 procedure TFTaskManagement.PopulateBayTypeCombo;
@@ -114,43 +161,6 @@ begin
   cbbayType.Items.Add('Fast Load');
   cbbayType.Items.Add('Standard');
   cbbayType.ItemIndex := -1;
-end;
-
-procedure TFTaskManagement.StringGrid1ApplyStyleLookup(Sender: TObject);
-var
-  LBackground: TFmxObject;
-begin
-  LBackground := StringGrid1.FindStyleResource('background');
-  if (LBackground is TControl) then
-  begin
-    (LBackground as TControl).Visible := False;
-  end;
-end;
-
-procedure TFTaskManagement.LoadTasksToGrid;
-var
-  i: Integer;
-begin
-  StringGrid1.RowCount := 0;
-  SetLength(FTaskIDs, 0);
-  FmOpti.optiTasks.First;
-
-  i := 0;
-  while not FmOpti.optiTasks.Eof do
-  begin
-    if FmOpti.optiTasks.FieldByName('ManagerID').AsInteger = CurrentManagerID then
-    begin
-      StringGrid1.RowCount := i + 1;
-      SetLength(FTaskIDs, i + 1);
-      FTaskIDs[i] := FmOpti.optiTasks.FieldByName('TaskID').AsInteger;
-      StringGrid1.Cells[0, i] := FmOpti.optiTasks.FieldByName('TaskName').AsString;
-      StringGrid1.Cells[1, i] := FmOpti.optiTasks.FieldByName('Duration').AsString;
-      StringGrid1.Cells[2, i] := FmOpti.optiTasks.FieldByName('Priority').AsString;
-      StringGrid1.Cells[3, i] := FmOpti.optiTasks.FieldByName('BayType').AsString;
-      Inc(i);
-    end;
-    FmOpti.optiTasks.Next;
-  end;
 end;
 
 procedure TFTaskManagement.PopulatePriorityCombo;
@@ -164,27 +174,33 @@ end;
 
 procedure TFTaskManagement.raddClick(Sender: TObject);
 begin
-  if (lbltname.Text = '') or (cbPriority.ItemIndex = -1) or (cbbayType.ItemIndex = -1) then
+  // --- Input Validation ---
+  if (lbltname.Text = '') or (cbPriority.ItemIndex = -1) or
+     (cbbayType.ItemIndex = -1) or (lblDuration.Text = '') then
   begin
-    ShowMessage('Please fill in all fields.');
+    ShowMessage('Please fill in all fields, including Task Name, Duration, Priority, and Bay Type.');
     Exit;
   end;
 
-  FmOpti.optiTasks.Append;
-  FmOpti.optiTasks.FieldByName('TaskName').AsString := lbltname.Text;
-  FmOpti.optiTasks.FieldByName('Duration').AsInteger := StrToIntDef(lblDuration.Text, 0);
-  FmOpti.optiTasks.FieldByName('Priority').AsString := cbPriority.Text;
-  FmOpti.optiTasks.FieldByName('BayType').AsString := cbbayType.Text;
-  // *** FIX 1: New tasks should be 'Pending', not 'Scheduled'. ***
-  FmOpti.optiTasks.FieldByName('Status').AsString := 'Pending';
-  // *** FIX 2: Do NOT set a StartTime. The scheduler does this. ***
-  // FmOpti.optiTasks.FieldByName('StartTime').AsDateTime := Now; // This line was incorrect.
-  FmOpti.optiTasks.FieldByName('ManagerID').AsInteger := CurrentManagerID;
-  FmOpti.optiTasks.Post;
+  try
+    FmOpti.optiTasks.Append;
+    FmOpti.optiTasks.FieldByName('TaskName').AsString := lbltname.Text;
+    FmOpti.optiTasks.FieldByName('Duration').AsInteger := StrToIntDef(lblDuration.Text, 0);
+    FmOpti.optiTasks.FieldByName('Priority').AsString := cbPriority.Text;
+    FmOpti.optiTasks.FieldByName('BayType').AsString := cbbayType.Text;
+    FmOpti.optiTasks.FieldByName('Status').AsString := 'Pending';
+    FmOpti.optiTasks.FieldByName('ManagerID').AsInteger := CurrentManagerID;
+    // --- Save the Deadline ---
+    FmOpti.optiTasks.FieldByName('Deadline').AsDateTime := dtpDeadline.Date;
+    FmOpti.optiTasks.Post;
 
-  LoadTasksToGrid;
-  ClearFields;
-  ShowMessage('Task added successfully.');
+    LoadTasksToGrid;
+    ClearFields;
+    ShowMessage('Task added successfully.');
+  except
+    on E: Exception do
+      ShowMessage('An error occurred while adding the task: ' + E.Message);
+  end;
 end;
 
 procedure TFTaskManagement.rDeleteClick(Sender: TObject);
@@ -203,10 +219,10 @@ begin
   begin
     if MessageDlg('Are you sure you want to delete this task?', TMsgDlgType.mtConfirmation, [TMsgDlgBtn.mbYes, TMsgDlgBtn.mbNo], 0) = mrYes then
     begin
-        FmOpti.optiTasks.Delete;
-        LoadTasksToGrid;
-        ClearFields;
-        ShowMessage('Task deleted successfully.');
+      FmOpti.optiTasks.Delete;
+      LoadTasksToGrid;
+      ClearFields;
+      ShowMessage('Task deleted successfully.');
     end;
   end
   else
@@ -229,16 +245,23 @@ begin
 
   if FmOpti.optiTasks.Locate('TaskID', LTaskID, []) then
   begin
-    FmOpti.optiTasks.Edit;
-    FmOpti.optiTasks.FieldByName('TaskName').AsString := lbltname.Text;
-    FmOpti.optiTasks.FieldByName('Duration').AsInteger := StrToIntDef(lblDuration.Text, 0);
-    FmOpti.optiTasks.FieldByName('Priority').AsString := cbPriority.Text;
-    FmOpti.optiTasks.FieldByName('BayType').AsString := cbbayType.Text;
-    FmOpti.optiTasks.Post;
+    try
+      FmOpti.optiTasks.Edit;
+      FmOpti.optiTasks.FieldByName('TaskName').AsString := lbltname.Text;
+      FmOpti.optiTasks.FieldByName('Duration').AsInteger := StrToIntDef(lblDuration.Text, 0);
+      FmOpti.optiTasks.FieldByName('Priority').AsString := cbPriority.Text;
+      FmOpti.optiTasks.FieldByName('BayType').AsString := cbbayType.Text;
+      // --- Update the Deadline ---
+      FmOpti.optiTasks.FieldByName('Deadline').AsDateTime := dtpDeadline.Date;
+      FmOpti.optiTasks.Post;
 
-    LoadTasksToGrid;
-    ClearFields;
-    ShowMessage('Task updated successfully.');
+      LoadTasksToGrid;
+      ClearFields;
+      ShowMessage('Task updated successfully.');
+    except
+      on E: Exception do
+        ShowMessage('An error occurred while updating the task: ' + E.Message);
+    end;
   end
   else
   begin
@@ -247,15 +270,44 @@ begin
 end;
 
 procedure TFTaskManagement.StringGrid1CellClick(const Column: TColumn; const Row: Integer);
+var
+  DeadlineStr: string;
+  DeadlineValue: TDateTime;
 begin
   if Row < 0 then Exit;
 
   SelectedTaskRow := Row;
 
-  lbltname.Text := StringGrid1.Cells[0, Row];
-  lblDuration.Text := StringGrid1.Cells[1, Row];
-  cbPriority.ItemIndex := cbPriority.Items.IndexOf(StringGrid1.Cells[2, Row]);
-  cbbayType.ItemIndex := cbbayType.Items.IndexOf(StringGrid1.Cells[3, Row]);
+  // Populate the text fields from the grid
+  lbltname.Text := StringGrid1.Cells[colTaskName.Index, Row];
+  lblDuration.Text := StringGrid1.Cells[colDuration.Index, Row];
+  cbPriority.ItemIndex := cbPriority.Items.IndexOf(StringGrid1.Cells[colPriority.Index, Row]);
+  cbbayType.ItemIndex := cbbayType.Items.IndexOf(StringGrid1.Cells[colBayType.Index, Row]);
+
+  // --- Load the Deadline into the TDateEdit ---
+  DeadlineStr := StringGrid1.Cells[colDeadline.Index, Row];
+  if TryStrToDate(DeadlineStr, DeadlineValue) then
+  begin
+    dtpDeadline.Date := DeadlineValue;
+  end
+  else
+  begin
+    // If the deadline is 'Not Set' or invalid, default to today
+    dtpDeadline.Date := Now;
+  end;
+end;
+
+// --- No changes needed for the drawing procedures ---
+
+procedure TFTaskManagement.StringGrid1ApplyStyleLookup(Sender: TObject);
+var
+  LBackground: TFmxObject;
+begin
+  LBackground := StringGrid1.FindStyleResource('background');
+  if (LBackground is TControl) then
+  begin
+    (LBackground as TControl).Visible := False;
+  end;
 end;
 
 procedure TFTaskManagement.StringGrid1DrawColumnCell(Sender: TObject;
@@ -287,5 +339,4 @@ begin
 end;
 
 end.
-
 
