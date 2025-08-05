@@ -1,0 +1,166 @@
+OptiFlow: Smart Scheduling & Optimization System - Full Specification
+Version: 1.2 (As of August 1, 2025)
+Project Lead: Transport Hub Manager (End-User)
+System: OptiFlow
+
+1. Vision & Strategic Purpose: The Future of Hub Management
+The Problem: The Daily Chaos of Manual Logistics
+In the high-stakes environment of a modern transport hub, inefficiency is the enemy. Managers are constantly battling operational chaos: delivery schedules change without notice, critical tasks are tracked on messy whiteboards or disjointed spreadsheets, and the risk of double-booking a crucial loading bay is a constant threat. Assigning the right staff to the right job under pressure leads to errors, and a lack of centralized data makes it impossible to accurately track performance, identify bottlenecks, or plan for the future. The consequences are severe: costly delays, wasted man-hours, underutilized resources, and a damaged reputation.
+
+The Vision: From Functional Shell to Polished Command Center
+OptiFlow is engineered to be the definitive solution to this chaos. While the current application serves as a powerful and robust functional shell—proving the core logic of its database and scheduling engine—the end result is envisioned as a fully polished, enterprise-ready digital command center for the entire logistics operation.
+
+Imagine a manager starting their day not with a flood of phone calls and paperwork, but by launching the fully realized OptiFlow application. The interface is not just functional; it is intuitive, responsive, and visually refined. With a single glance at the Dashboard, they see the real-time status of every task, bay, and staff member, represented by clear, color-coded indicators. New tasks are entered in seconds through a zero-friction interface. With one click, the intelligent optimization engine instantly analyzes all variables—task priority, bay compatibility, and resource availability—to generate a conflict-free, perfectly sequenced schedule for the entire day, which is then visualized on an interactive timeline.
+
+Throughout the day, the system provides live updates and proactive alerts. The manager is no longer reacting to problems; they are proactively orchestrating a smooth, predictable, and highly efficient workflow. This is the core vision of OptiFlow: to evolve from its current foundational state into a strategic, indispensable tool that transforms the manager's role from a reactive problem-solver into a strategic overseer of a well-oiled machine.
+
+The Core Philosophy: The Four Pillars of a Professional System
+OptiFlow's power is built on four foundational pillars that define its journey from a bare-bones application to a professional-grade system:
+
+Centralized Control: All operational data—tasks, bays, staff, and schedules—resides in a single, secure, and relational database. This eliminates information silos and creates an undisputed "single source of truth," ensuring that every decision is based on complete and accurate information.
+
+Intelligent Automation: At its heart, OptiFlow is an engine of automation. It replaces the complex mental calculus and guesswork of manual scheduling with robust, priority-based algorithms. This automation frees managers from tedious administrative work, allowing them to focus on high-value strategic activities like process improvement and client relations.
+
+Actionable Insight: The application does more than just manage data; it transforms it into intelligence. Through its real-time dashboard and powerful reporting module, OptiFlow converts raw operational numbers into clear, actionable KPIs. Managers can track performance, identify recurring bottlenecks, analyze resource utilization, and make informed, data-driven decisions to continuously enhance productivity and profitability.
+
+Professional Polish & Scalability: The journey from a functional shell to a final product is defined by this pillar. A polished application is intuitive, reliable, and ready for real-world demands. This involves refining every aspect of the user experience—from visual feedback and streamlined workflows to robust error handling—and ensuring the system is scalable, capable of handling a growing volume of tasks, bays, and staff without a drop in performance. The clearly defined expansion blueprint for AI-driven suggestions and notifications is a core part of this commitment to creating a future-proof, enterprise-grade solution.
+
+2. Database Schema (MS Access)
+The application is built upon a robust relational database designed to store all operational data logically and efficiently.
+
+tblManagers: Stores login credentials and company information for management users.
+
+ManagerID (PK, Autonumber): Unique identifier for each manager/company account.
+
+CompanyName, Email, Username, Password, ResetToken (Text): Account and authentication details.
+
+CreatedDate (Date/Time): Timestamp for account creation.
+
+tblTasks: Contains all operational tasks to be scheduled.
+
+TaskID (PK, Autonumber): Unique identifier for each task.
+
+TaskName, Priority, BayType, Status (Text): Core details describing the task.
+
+Duration (Number): The time required to complete the task, in minutes.
+
+ManagerID (FK, Number): Links the task to a specific manager's account.
+
+tblBays: Manages the physical loading bays or resource locations.
+
+BayID (PK, Autonumber): Unique identifier for each bay.
+
+BayName, BayType, Status (Text): Describes the bay and its current operational status (e.g., "Available", "Maintenance").
+
+ManagerID (FK, Number): Links the bay to a manager's account.
+
+tblStaff: Manages all personnel who can be assigned to tasks.
+
+StaffID (PK, Autonumber): Unique identifier for each staff member.
+
+Username, Password, Role (Text): Staff details and their operational role.
+
+IsActive (Yes/No): Business Logic Flag. A value of False indicates the staff member is available for assignment. A value of True indicates they are currently busy or assigned.
+
+ManagerID (FK, Number): Links staff to a manager's account.
+
+tblSchedule: The central transaction table linking tasks, bays, and staff.
+
+ScheduleID (PK, Autonumber): Unique identifier for each scheduled event.
+
+TaskID (FK, Number): The task being scheduled.
+
+BayID (FK, Number): The bay where the task will occur.
+
+StaffID (FK, Number): The staff member assigned to the task.
+
+StartTime (Date/Time): The precise date and time the task is scheduled to begin.
+
+ManagerID (FK, Number): Links the schedule entry to a manager's account.
+
+3. Forms & UI Functionality
+The application features a consistent, professional user interface with a dark theme and a standardized sidebar for navigation. Each form is a dedicated module for a specific management function.
+
+3.1. Login & Sign-Up (Login_Frm, SignUp_FRM)
+UI: Clean, minimalist interface for user authentication and new account registration. Features fields for username/password, company details, and email verification.
+
+Functionality:
+
+Authentication: Validates user credentials against the tblManagers table.
+
+Session Management: Sets a global CurrentManagerID upon successful login, ensuring all subsequent data is filtered for the logged-in user.
+
+Account Creation: A secure sign-up process with email verification and password requirements.
+
+Password Reset: A fully integrated, cloud-based password reset feature using PowerShell scripting and Firebase for token management.
+
+3.2. Task Management (TaskManagement_FRM)
+UI: A data-centric view with an input panel and a grid (StringGrid1) displaying all tasks.
+
+Functionality: Provides full CRUD (Create, Read, Update, Delete) capabilities for the tblTasks table. Managers can define a task's name, its required duration, its priority level (Low, Medium, High), and the type of bay it requires.
+
+3.3. Bay Manager (BayManager_FRM)
+UI: Similar to the Task Manager, with an input panel and a grid for managing loading bays.
+
+Functionality: Full CRUD for the tblBays table. Managers can add new bays, define their type (e.g., "Fast Load," "Crane"), and set their operational status ("Available," "Maintenance").
+
+3.4. Staff Manager (StaffManager_FRM)
+UI: An interface for managing personnel, including fields for name, role, and a grid display.
+
+Functionality: Full CRUD for the tblStaff table. Managers can add new staff, assign roles, and manage their availability using the IsActive ("Is Busy") status flag.
+
+3.5. Scheduler (Scheduler_FRM)
+UI: A dual-grid layout showing "Unscheduled Tasks" and "Scheduled Tasks."
+
+Functionality: This is the core operational hub.
+
+Manual Assignment: Allows managers to manually select an unscheduled task and assign it to a specific bay. The system automatically calculates the earliest possible start time for that bay.
+
+Automated Optimization: A powerful feature that uses a priority-based algorithm to automatically schedule all pending tasks. It prioritizes "High" priority tasks and assigns them to the first available and compatible bay.
+
+3.6. Staff Scheduler (StaffScheduler_FRM)
+UI: A focused interface for assigning personnel. It displays scheduled tasks that are awaiting staff assignment, a combobox (cbSelectStaff) to list available staff, and a grid showing completed assignments.
+
+Functionality:
+
+Dynamic Availability: The combobox intelligently populates only with staff members whose IsActive status is False.
+
+Atomic Assignment: When a manager assigns a staff member, the system performs two actions in a single transaction: it updates the tblSchedule with the StaffID and simultaneously updates the tblStaff to set the staff member's IsActive status to True, instantly making them unavailable for other tasks.
+
+3.7. Dashboard (Dashboard_FRM)
+UI: A data visualization screen with date filters, key performance indicator (KPI) labels, and charts.
+
+Functionality:
+
+Real-Time KPIs: Displays live metrics calculated from the database, such as Total Scheduled Tasks, Average Task Duration, and Bay Utilization percentage.
+
+Data Visualization: Includes bar charts to track daily task volume and high-priority tasks, and a donut chart for utilization rates.
+
+Data Export: A feature to export the raw dashboard data to a CSV file.
+
+3.8. Reports (Reports_FRM)
+UI: A dedicated screen with date range selectors and three distinct export buttons.
+
+Functionality: A powerful data-exporting module.
+
+Export Task Logs: Generates a comprehensive CSV of all task activities within a date range.
+
+Export Bay Usage: Creates a summary CSV detailing the workload and total operational minutes for each bay.
+
+Export Conflict Report: Generates a focused CSV of all "High" priority tasks, allowing managers to analyze and mitigate potential bottlenecks.
+
+4. Application Flow & User Journey
+A manager logs in using their secure credentials.
+
+The manager uses the Task Manager and Bay Manager to input the day's operational requirements and confirm resource availability.
+
+Using the Scheduler, the manager either manually assigns critical tasks or runs the optimization algorithm to automatically schedule all pending tasks to the most efficient bay slots.
+
+The manager then navigates to the Staff Scheduler to assign available personnel to the newly scheduled tasks.
+
+Throughout the day, the manager monitors real-time operational health via the Dashboard.
+
+At the end of the day or week, the manager uses the Reports form to export detailed logs for record-keeping, payroll, or performance analysis.
+
+5. Summary Statement
+OptiFlow is a modern, scalable, and intelligently designed transport management system tailored for logistics hubs, warehouses, and dispatch environments. Its smart scheduling logic, real-time monitoring, and professional interface make it an ideal solution for replacing manual processes. By providing both automated optimization and manual control, along with powerful data analysis and reporting tools, OptiFlow empowers managers to make smarter decisions, increase throughput, and maintain a clear, comprehensive overview of their entire operation.
