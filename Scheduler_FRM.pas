@@ -7,19 +7,14 @@ uses
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs,
   FMX.Controls.Presentation, FMX.Edit, FMX.Objects, System.Rtti, FMX.Grid.Style,
   FMX.Grid, FMX.ScrollBox, FMX.StdCtrls, Data.DB, Data.Win.ADODB, System.UIConsts,
-  System.Generics.Collections;
+  System.Generics.Collections, FMX.TabControl, FMX.Layouts,
+  System.Math; // *** ADDED: Required for Floor function ***
 
 type
   TScheduledTaskInfo = record
     ScheduleID: Integer;
     TaskID: Integer;
     StaffID: Integer;
-  end;
-
-  TBayInfo = record
-    BayID: Integer;
-    BayType: string;
-    NextAvailableTime: TDateTime;
   end;
 
   TScheduler = class(TForm)
@@ -70,20 +65,40 @@ type
     lblStaffSchedulerbtn: TEdit;
     LogoutIcon: TRectangle;
     LogoutBtn: TEdit;
+    rCancelTask: TRectangle;
+    Label2: TLabel;
+    TabControl1: TTabControl;
+    Rectangle1: TRectangle;
+    tiListView: TTabItem;
+    tiTimelineView: TTabItem;
+    Rectangle2: TRectangle;
+    sbTimeline: TScrollBox;
     procedure FormCreate(Sender: TObject);
     procedure rOptimizeClick(Sender: TObject);
     procedure rManualAssignClick(Sender: TObject);
     procedure UnscheduledGridCellClick(const Column: TColumn; const Row: Integer);
     procedure ScheduledGridCellClick(const Column: TColumn; const Row: Integer);
     procedure rMarkCompleteClick(Sender: TObject);
+    procedure rCancelTaskClick(Sender: TObject);
+    procedure TabControl1Change(Sender: TObject);
   private
     { Private declarations }
     FSelectedUnscheduledRow: Integer;
     FSelectedScheduledRow: Integer;
     FScheduledTasks: TArray<TScheduledTaskInfo>;
+    // --- NEW: Variables for Drag-and-Drop ---
+    FDraggingRect: TRectangle;
+    FDragStartPoint: TPointF;
+    FOriginalPosition: TPointF;
+    // --- END NEW ---
     procedure LoadUnscheduledGrid;
     procedure LoadScheduledGrid;
-    function GetEarliestStartTimeForBay(const ABayID: Integer): TDateTime;
+    procedure DrawTimeline;
+    // --- NEW: Event Handlers for Drag-and-Drop ---
+    procedure TaskRectMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Single);
+    procedure TaskRectMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Single);
+    procedure TaskRectMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Single);
+    // --- END NEW ---
   public
     { Public declarations }
   published
@@ -104,6 +119,14 @@ implementation
 
 uses System.DateUtils, dmOpti, Login_Frm, FMX.DialogService, FMX.Platform;
 
+const
+  // --- Constants for Timeline Drawing ---
+  BayRowHeight = 60;
+  HeaderHeight = 40;
+  BayLabelWidth = 150;
+  PixelsPerHour = 120;
+  // --- End Constants ---
+
 procedure TScheduler.FormCreate(Sender: TObject);
 begin
   UnscheduledGrid.DefaultDrawing := False;
@@ -120,6 +143,7 @@ begin
   ScheduledGrid.OnCellClick := ScheduledGridCellClick;
   FSelectedUnscheduledRow := -1;
   FSelectedScheduledRow := -1;
+  FDraggingRect := nil; // Initialize dragging variable
   LoadUnscheduledGrid;
   LoadScheduledGrid;
 end;
@@ -162,6 +186,11 @@ begin
 
     cmd.CommandText := 'UPDATE tblTasks SET Status = ''Completed'' WHERE TaskID = :pTaskID';
     cmd.Parameters.ParamByName('pTaskID').Value := SelectedTaskInfo.TaskID;
+    cmd.Execute;
+
+    cmd.CommandText := 'UPDATE tblSchedule SET Status = ''Completed'', CompletedTime = :pNow WHERE ScheduleID = :pScheduleID';
+    cmd.Parameters.ParamByName('pNow').Value := Now;
+    cmd.Parameters.ParamByName('pScheduleID').Value := SelectedTaskInfo.ScheduleID;
     cmd.Execute;
 
     if SelectedTaskInfo.StaffID > 0 then
@@ -262,14 +291,13 @@ procedure TScheduler.LoadScheduledGrid;
 var
   iRow: Integer;
   lStartTime, lEndTime: TDateTime;
-  lDuration: Integer;
 begin
   ScheduledGrid.RowCount := 0;
   SetLength(FScheduledTasks, 0);
   try
     FmOpti.qrySchedule.Close;
     FmOpti.qrySchedule.SQL.Clear;
-    FmOpti.qrySchedule.SQL.Add('SELECT s.ScheduleID, s.TaskID, s.StaffID, b.BayName, t.TaskName, s.StartTime, t.Duration, t.Status');
+    FmOpti.qrySchedule.SQL.Add('SELECT s.ScheduleID, s.TaskID, s.StaffID, b.BayName, t.TaskName, s.StartTime, s.EndTime, t.Status');
     FmOpti.qrySchedule.SQL.Add('FROM ((tblSchedule s');
     FmOpti.qrySchedule.SQL.Add('INNER JOIN tblTasks t ON s.TaskID = t.TaskID)');
     FmOpti.qrySchedule.SQL.Add('INNER JOIN tblBays b ON s.BayID = b.BayID)');
@@ -289,8 +317,8 @@ begin
       FScheduledTasks[iRow].StaffID := FmOpti.qrySchedule.FieldByName('StaffID').AsInteger;
 
       lStartTime := FmOpti.qrySchedule.FieldByName('StartTime').AsDateTime;
-      lDuration := FmOpti.qrySchedule.FieldByName('Duration').AsInteger;
-      lEndTime := IncMinute(lStartTime, lDuration);
+      lEndTime := FmOpti.qrySchedule.FieldByName('EndTime').AsDateTime;
+
       ScheduledGrid.Cells[colBayName.Index, iRow] := FmOpti.qrySchedule.FieldByName('BayName').AsString;
       ScheduledGrid.Cells[colTaskenameScheduled.Index, iRow] := FmOpti.qrySchedule.FieldByName('TaskName').AsString;
       ScheduledGrid.Cells[colStartTime.Index, iRow] := FormatDateTime('yyyy-mm-dd hh:nn', lStartTime);
@@ -307,39 +335,82 @@ begin
   FSelectedScheduledRow := -1;
 end;
 
-function TScheduler.GetEarliestStartTimeForBay(const ABayID: Integer): TDateTime;
+procedure TScheduler.rCancelTaskClick(Sender: TObject);
 var
-  qryLastTask: TADOQuery;
-  lLastTaskStart: TDateTime;
-  lLastTaskDuration: Integer;
+  SelectedTaskInfo: TScheduledTaskInfo;
+  cmd: TADOCommand;
 begin
-  Result := Now;
-  qryLastTask := TADOQuery.Create(nil);
-  try
-    qryLastTask.Connection := FmOpti.ConOpti;
-    qryLastTask.SQL.Text := 'SELECT TOP 1 s.StartTime, t.Duration FROM tblSchedule s ' +
-                          'INNER JOIN tblTasks t ON s.TaskID = t.TaskID ' +
-                          'WHERE s.BayID = :pBayID ORDER BY s.StartTime DESC';
-    qryLastTask.Parameters.ParamByName('pBayID').Value := ABayID;
-    qryLastTask.Open;
-
-    if not qryLastTask.IsEmpty then
-    begin
-      lLastTaskStart := qryLastTask.FieldByName('StartTime').AsDateTime;
-      lLastTaskDuration := qryLastTask.FieldByName('Duration').AsInteger;
-      Result := IncMinute(lLastTaskStart, lLastTaskDuration);
-    end;
-  finally
-    qryLastTask.Free;
+  if FSelectedScheduledRow < 0 then
+  begin
+    ShowMessage('Please select a task from the "Scheduled Tasks" grid to cancel.');
+    Exit;
   end;
+
+  SelectedTaskInfo := FScheduledTasks[FSelectedScheduledRow];
+
+  if MessageDlg('Are you sure you want to cancel this task? It will be removed from the schedule and the staff member will be released.',
+    TMsgDlgType.mtConfirmation, [TMsgDlgBtn.mbYes, TMsgDlgBtn.mbNo], 0) = mrNo then
+    Exit;
+
+  cmd := TADOCommand.Create(nil);
+  try
+    cmd.Connection := FmOpti.ConOpti;
+    FmOpti.ConOpti.BeginTrans;
+
+    cmd.CommandText := 'UPDATE tblTasks SET Status = ''Canceled'' WHERE TaskID = :pTaskID';
+    cmd.Parameters.ParamByName('pTaskID').Value := SelectedTaskInfo.TaskID;
+    cmd.Execute;
+
+    if SelectedTaskInfo.StaffID > 0 then
+    begin
+      cmd.CommandText := 'UPDATE tblStaff SET IsActive = False WHERE StaffID = :pStaffID';
+      cmd.Parameters.ParamByName('pStaffID').Value := SelectedTaskInfo.StaffID;
+      cmd.Execute;
+    end;
+
+    cmd.CommandText := 'DELETE FROM tblSchedule WHERE ScheduleID = :pScheduleID';
+    cmd.Parameters.ParamByName('pScheduleID').Value := SelectedTaskInfo.ScheduleID;
+    cmd.Execute;
+
+    FmOpti.ConOpti.CommitTrans;
+    ShowMessage('Task has been canceled and removed from the schedule.');
+
+  except
+    on E: Exception do
+    begin
+      FmOpti.ConOpti.RollbackTrans;
+      ShowMessage('An error occurred while canceling the task: ' + E.Message);
+    end;
+  end;
+
+  cmd.Free;
+  LoadUnscheduledGrid;
+  LoadScheduledGrid;
 end;
 
 procedure TScheduler.rManualAssignClick(Sender: TObject);
 var
   lBayName: string;
-  lTaskID, lBayID: Integer;
-  qryBayLookup, cmd: TADOQuery;
-  lEarliestStart: TDateTime;
+  lTaskID, lBayID, lDuration: Integer;
+  qryBayLookup, qryTaskLookup, cmd: TADOQuery;
+  lEarliestStart, lEndTime: TDateTime;
+  function GetLocalEarliestStartTime(const ABayID: Integer): TDateTime;
+  var
+    qry: TADOQuery;
+  begin
+    Result := Now;
+    qry := TADOQuery.Create(nil);
+    try
+      qry.Connection := FmOpti.ConOpti;
+      qry.SQL.Text := 'SELECT MAX(EndTime) AS LastEnd FROM tblSchedule WHERE BayID = :pBayID';
+      qry.Parameters.ParamByName('pBayID').Value := ABayID;
+      qry.Open;
+      if not qry.FieldByName('LastEnd').IsNull then
+        Result := qry.FieldByName('LastEnd').AsDateTime;
+    finally
+      qry.Free;
+    end;
+  end;
 begin
   if FSelectedUnscheduledRow < 0 then
   begin
@@ -353,9 +424,11 @@ begin
   lTaskID := StrToInt(UnscheduledGrid.Cells[colRequiredBay.Index, FSelectedUnscheduledRow]);
 
   qryBayLookup := TADOQuery.Create(nil);
+  qryTaskLookup := TADOQuery.Create(nil);
   cmd := TADOQuery.Create(nil);
   try
     qryBayLookup.Connection := FmOpti.ConOpti;
+    qryTaskLookup.Connection := FmOpti.ConOpti;
     cmd.Connection := FmOpti.ConOpti;
 
     qryBayLookup.SQL.Text := 'SELECT BayID FROM tblBays WHERE BayName = :pBayName AND ManagerID = :pManagerID AND Status = ''Available''';
@@ -365,19 +438,33 @@ begin
 
     if qryBayLookup.IsEmpty then
     begin
-      ShowMessage('Error: Bay "' + lBayName + '" not found or is not available (e.g., under maintenance).');
+      ShowMessage('Error: Bay "' + lBayName + '" not found or is not available.');
       Exit;
     end;
     lBayID := qryBayLookup.FieldByName('BayID').AsInteger;
     qryBayLookup.Close;
 
-    lEarliestStart := GetEarliestStartTimeForBay(lBayID);
+    qryTaskLookup.SQL.Text := 'SELECT Duration FROM tblTasks WHERE TaskID = :pTaskID';
+    qryTaskLookup.Parameters.ParamByName('pTaskID').Value := lTaskID;
+    qryTaskLookup.Open;
+    if qryTaskLookup.IsEmpty then
+    begin
+      ShowMessage('Error: Could not find the details for the selected task.');
+      Exit;
+    end;
+    lDuration := qryTaskLookup.FieldByName('Duration').AsInteger;
+    qryTaskLookup.Close;
+
+    lEarliestStart := GetLocalEarliestStartTime(lBayID);
+    lEndTime := IncMinute(lEarliestStart, lDuration);
 
     FmOpti.ConOpti.BeginTrans;
-    cmd.SQL.Text := 'INSERT INTO tblSchedule (TaskID, BayID, StartTime, ManagerID) VALUES (:pTaskID, :pBayID, :pStartTime, :pManagerID)';
+
+    cmd.SQL.Text := 'INSERT INTO tblSchedule (TaskID, BayID, StartTime, EndTime, ManagerID) VALUES (:pTaskID, :pBayID, :pStartTime, :pEndTime, :pManagerID)';
     cmd.Parameters.ParamByName('pTaskID').Value := lTaskID;
     cmd.Parameters.ParamByName('pBayID').Value := lBayID;
     cmd.Parameters.ParamByName('pStartTime').Value := lEarliestStart;
+    cmd.Parameters.ParamByName('pEndTime').Value := lEndTime;
     cmd.Parameters.ParamByName('pManagerID').Value := CurrentManagerID;
     cmd.ExecSQL;
 
@@ -397,6 +484,7 @@ begin
   end;
 
   qryBayLookup.Free;
+  qryTaskLookup.Free;
   cmd.Free;
   LoadUnscheduledGrid;
   LoadScheduledGrid;
@@ -404,101 +492,15 @@ end;
 
 procedure TScheduler.rOptimizeClick(Sender: TObject);
 var
-  qryUnscheduled, qryAvailableBays, cmd: TADOQuery;
-  lAvailableBays: TList<TBayInfo>;
-  lBayInfo: TBayInfo;
-  lTaskID, lDuration, i: Integer;
-  lRequiredBayType: string;
-  lBestBayID, lBestBayIndex: Integer;
-  lBestStartTime: TDateTime;
-  bScheduledSomething: Boolean;
   CursorService: IFMXCursorService;
+  bScheduledSomething: Boolean;
 begin
-    if TPlatformServices.Current.SupportsPlatformService(IFMXCursorService, IInterface(CursorService)) then
+  if TPlatformServices.Current.SupportsPlatformService(IFMXCursorService, IInterface(CursorService)) then
     CursorService.SetCursor(crHourGlass);
-
   try
-    bScheduledSomething := False;
-    lAvailableBays := TList<TBayInfo>.Create;
-    qryUnscheduled := TADOQuery.Create(nil);
-    qryAvailableBays := TADOQuery.Create(nil);
-    cmd := TADOQuery.Create(nil);
     try
-      qryUnscheduled.Connection := FmOpti.ConOpti;
-      qryAvailableBays.Connection := FmOpti.ConOpti;
-      cmd.Connection := FmOpti.ConOpti;
+      bScheduledSomething := FmOpti.OptimizeSchedule(CurrentManagerID);
 
-      qryAvailableBays.SQL.Text := 'SELECT BayID, BayType FROM tblBays WHERE Status = ''Available'' AND ManagerID = :pManagerID';
-      qryAvailableBays.Parameters.ParamByName('pManagerID').Value := CurrentManagerID;
-      qryAvailableBays.Open;
-      while not qryAvailableBays.Eof do
-      begin
-        lBayInfo.BayID := qryAvailableBays.FieldByName('BayID').AsInteger;
-        lBayInfo.BayType := qryAvailableBays.FieldByName('BayType').AsString;
-        lBayInfo.NextAvailableTime := GetEarliestStartTimeForBay(lBayInfo.BayID);
-        lAvailableBays.Add(lBayInfo);
-        qryAvailableBays.Next;
-      end;
-      qryAvailableBays.Close;
-
-      if lAvailableBays.Count = 0 then
-      begin
-        ShowMessage('No available bays to schedule tasks on.');
-        Exit;
-      end;
-
-      FmOpti.ConOpti.BeginTrans;
-
-      qryUnscheduled.SQL.Text := 'SELECT TaskID, Duration, BayType, Priority FROM tblTasks ' +
-                               'WHERE (Status IS NULL OR Status = ''Pending'') AND ManagerID = :pManagerID ' +
-                               'ORDER BY IIF(Priority="High", 1, IIF(Priority="Medium", 2, 3))';
-      qryUnscheduled.Parameters.ParamByName('pManagerID').Value := CurrentManagerID;
-      qryUnscheduled.Open;
-
-      while not qryUnscheduled.Eof do
-      begin
-        lTaskID := qryUnscheduled.FieldByName('TaskID').AsInteger;
-        lDuration := qryUnscheduled.FieldByName('Duration').AsInteger;
-        lRequiredBayType := qryUnscheduled.FieldByName('BayType').AsString;
-        lBestBayID := -1;
-        lBestBayIndex := -1;
-        lBestStartTime := EncodeDate(2099, 1, 1);
-
-        for i := 0 to lAvailableBays.Count - 1 do
-        begin
-          lBayInfo := lAvailableBays[i];
-          if (lBayInfo.BayType = lRequiredBayType) and (lBayInfo.NextAvailableTime < lBestStartTime) then
-          begin
-            lBestStartTime := lBayInfo.NextAvailableTime;
-            lBestBayID := lBayInfo.BayID;
-            lBestBayIndex := i;
-          end;
-        end;
-
-        if lBestBayID <> -1 then
-        begin
-          cmd.SQL.Text := 'INSERT INTO tblSchedule (TaskID, BayID, StartTime, ManagerID) VALUES (:pTaskID, :pBayID, :pStartTime, :pManagerID)';
-          cmd.Parameters.ParamByName('pTaskID').Value := lTaskID;
-          cmd.Parameters.ParamByName('pBayID').Value := lBestBayID;
-          cmd.Parameters.ParamByName('pStartTime').Value := lBestStartTime;
-          cmd.Parameters.ParamByName('pManagerID').Value := CurrentManagerID;
-
-          cmd.ExecSQL;
-
-          cmd.SQL.Text := 'UPDATE tblTasks SET Status = ''Scheduled'' WHERE TaskID = :pTaskID';
-          cmd.Parameters.ParamByName('pTaskID').Value := lTaskID;
-          cmd.ExecSQL;
-
-          lBayInfo := lAvailableBays[lBestBayIndex];
-          lBayInfo.NextAvailableTime := IncMinute(lBestStartTime, lDuration);
-          lAvailableBays[lBestBayIndex] := lBayInfo;
-
-          bScheduledSomething := True;
-        end;
-        qryUnscheduled.Next;
-      end;
-
-      FmOpti.ConOpti.CommitTrans;
       if bScheduledSomething then
         ShowMessage('Optimization process completed successfully!')
       else
@@ -507,24 +509,306 @@ begin
     except
       on E: Exception do
       begin
-        FmOpti.ConOpti.RollbackTrans;
         ShowMessage('An error occurred during optimization: ' + E.Message);
       end;
     end;
-
-    lAvailableBays.Free;
-    qryUnscheduled.Free;
-    qryAvailableBays.Free;
-    cmd.Free;
-
   finally
-
-     if TPlatformServices.Current.SupportsPlatformService(IFMXCursorService, IInterface(CursorService)) then
-    CursorService.SetCursor(crDefault);
+    if TPlatformServices.Current.SupportsPlatformService(IFMXCursorService, IInterface(CursorService)) then
+      CursorService.SetCursor(crDefault);
   end;
 
   LoadUnscheduledGrid;
   LoadScheduledGrid;
+end;
+
+procedure TScheduler.TabControl1Change(Sender: TObject);
+begin
+  if TabControl1.ActiveTab = tiTimelineView then
+  begin
+    DrawTimeline;
+  end;
+end;
+
+procedure TScheduler.DrawTimeline;
+var
+  qryBays: TADOQuery;
+  qrySchedule: TADOQuery;
+  BayDict: TDictionary<Integer, Integer>;
+  i: Integer;
+  BayLabel: TLabel;
+  HourLabel: TLabel;
+  TaskRect: TRectangle;
+  TaskLabel: TLabel;
+  lStartTime, lEndTime: TDateTime;
+  lTaskName, lPriority: string;
+  lBayID, lScheduleID: Integer;
+  RowIndex: Integer;
+  StartX, TaskWidth: Single;
+  TaskColor: TAlphaColor;
+  TotalContentHeight, TotalContentWidth: Single;
+begin
+  while sbTimeline.ControlsCount > 0 do
+    sbTimeline.Controls[0].Free;
+
+  BayDict := TDictionary<Integer, Integer>.Create;
+  qryBays := TADOQuery.Create(nil);
+  qrySchedule := TADOQuery.Create(nil);
+  try
+    qryBays.Connection := FmOpti.ConOpti;
+    qryBays.SQL.Text := 'SELECT BayID, BayName FROM tblBays WHERE ManagerID = :pManagerID ORDER BY BayName';
+    qryBays.Parameters.ParamByName('pManagerID').Value := CurrentManagerID;
+    qryBays.Open;
+
+    i := 0;
+    while not qryBays.Eof do
+    begin
+      BayLabel := TLabel.Create(sbTimeline);
+      BayLabel.Parent := sbTimeline;
+      BayLabel.Position.X := 10;
+      BayLabel.Position.Y := HeaderHeight + (i * BayRowHeight);
+      BayLabel.Width := BayLabelWidth - 20;
+      BayLabel.Height := BayRowHeight;
+      BayLabel.Text := qryBays.FieldByName('BayName').AsString;
+      BayLabel.TextAlign := TTextAlign.Center;
+      BayLabel.Font.Size := 14;
+      BayLabel.FontColor := TAlphaColors.White;
+      BayLabel.Tag := qryBays.FieldByName('BayID').AsInteger;
+
+      BayDict.Add(qryBays.FieldByName('BayID').AsInteger, i);
+      Inc(i);
+      qryBays.Next;
+    end;
+
+    for i := 0 to 23 do
+    begin
+      HourLabel := TLabel.Create(sbTimeline);
+      HourLabel.Parent := sbTimeline;
+      HourLabel.Position.X := BayLabelWidth + (i * PixelsPerHour);
+      HourLabel.Position.Y := 10;
+      HourLabel.Width := PixelsPerHour;
+      HourLabel.Height := HeaderHeight - 10;
+      HourLabel.Text := Format('%.2d:00', [i]);
+      HourLabel.FontColor := TAlphaColors.Lightgray;
+    end;
+
+    qrySchedule.Connection := FmOpti.ConOpti;
+    qrySchedule.SQL.Text := 'SELECT s.ScheduleID, s.BayID, t.TaskName, s.StartTime, s.EndTime, t.Priority ' +
+                           'FROM tblSchedule s INNER JOIN tblTasks t ON s.TaskID = t.TaskID ' +
+                           'WHERE t.ManagerID = :pManagerID AND t.Status IN (''Scheduled'', ''In Progress'') ' +
+                           'AND s.StartTime >= :pStartDate AND s.StartTime < :pEndDate';
+    qrySchedule.Parameters.ParamByName('pManagerID').Value := CurrentManagerID;
+    qrySchedule.Parameters.ParamByName('pStartDate').Value := Trunc(Now);
+    qrySchedule.Parameters.ParamByName('pEndDate').Value := Trunc(Now) + 1;
+    qrySchedule.Open;
+
+    while not qrySchedule.Eof do
+    begin
+      lBayID := qrySchedule.FieldByName('BayID').AsInteger;
+      if BayDict.TryGetValue(lBayID, RowIndex) then
+      begin
+        // *** ROBUSTNESS FIX: Check for NULL time values before reading them ***
+        if (not qrySchedule.FieldByName('StartTime').IsNull) and (not qrySchedule.FieldByName('EndTime').IsNull) then
+        begin
+          lScheduleID := qrySchedule.FieldByName('ScheduleID').AsInteger;
+          lStartTime := qrySchedule.FieldByName('StartTime').AsDateTime;
+          lEndTime := qrySchedule.FieldByName('EndTime').AsDateTime;
+          lTaskName := qrySchedule.FieldByName('TaskName').AsString;
+          lPriority := qrySchedule.FieldByName('Priority').AsString;
+
+          StartX := BayLabelWidth + (HourOf(lStartTime) * PixelsPerHour) + (MinuteOf(lStartTime) * PixelsPerHour / 60);
+          TaskWidth := MinutesBetween(lEndTime, lStartTime) * PixelsPerHour / 60;
+
+          if lPriority = 'High' then
+            TaskColor := TAlphaColor($FFD9534F)
+          else if lPriority = 'Medium' then
+            TaskColor := TAlphaColor($FFF0AD4E)
+          else
+            TaskColor := TAlphaColor($FF5CB85C);
+
+          TaskRect := TRectangle.Create(sbTimeline);
+          TaskRect.Parent := sbTimeline;
+          TaskRect.Tag := lScheduleID;
+          TaskRect.Position.X := StartX;
+          TaskRect.Position.Y := HeaderHeight + (RowIndex * BayRowHeight) + 5;
+          TaskRect.Width := TaskWidth;
+          TaskRect.Height := BayRowHeight - 10;
+          TaskRect.Fill.Color := TaskColor;
+          TaskRect.Stroke.Kind := TBrushKind.None;
+          TaskRect.XRadius := 5;
+          TaskRect.YRadius := 5;
+          TaskRect.OnMouseDown := TaskRectMouseDown;
+          TaskRect.OnMouseMove := TaskRectMouseMove;
+          TaskRect.OnMouseUp := TaskRectMouseUp;
+
+          TaskLabel := TLabel.Create(TaskRect);
+          TaskLabel.Parent := TaskRect;
+          TaskLabel.Align := TAlignLayout.Client;
+          TaskLabel.Text := ' ' + lTaskName;
+          TaskLabel.HitTest := False;
+          TaskLabel.TextAlign := TTextAlign.Center;
+          TaskLabel.FontColor := TAlphaColors.Black;
+          TaskLabel.Font.Size := 12;
+        end;
+      end;
+      qrySchedule.Next;
+    end;
+
+    TotalContentHeight := HeaderHeight + (qryBays.RecordCount * BayRowHeight) + 20;
+    TotalContentWidth := BayLabelWidth + (24 * PixelsPerHour) + 20;
+    // *** CORRECTED: Assigning to ContentSize property correctly ***
+    sbTimeline.Content.BoundsRect := TRectF.Create(0, 0, TotalContentWidth, TotalContentHeight);
+
+
+  finally
+    BayDict.Free;
+    qryBays.Free;
+    qrySchedule.Free;
+  end;
+end;
+
+procedure TScheduler.TaskRectMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Single);
+begin
+  if Button = TMouseButton.mbLeft then
+  begin
+    FDraggingRect := Sender as TRectangle;
+    FDraggingRect.BringToFront;
+    FOriginalPosition := FDraggingRect.Position.Point;
+    FDragStartPoint := TPointF.Create(X, Y);
+  end;
+end;
+
+procedure TScheduler.TaskRectMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Single);
+begin
+  if (FDraggingRect <> nil) and (ssLeft in Shift) then
+  begin
+    FDraggingRect.Position.X := FDraggingRect.Position.X + X - FDragStartPoint.X;
+    FDraggingRect.Position.Y := FDraggingRect.Position.Y + Y - FDragStartPoint.Y;
+  end;
+end;
+
+procedure TScheduler.TaskRectMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Single);
+var
+  DropPoint: TPointF;
+  TargetBayRow, TargetBayID, ScheduleID, Duration: Integer;
+  NewStartTime, NewEndTime: TDateTime;
+  qry: TADOQuery;
+  IsConflict: Boolean;
+begin
+  if FDraggingRect = nil then
+    Exit;
+
+  try
+    DropPoint := FDraggingRect.Position.Point;
+    ScheduleID := FDraggingRect.Tag;
+
+    TargetBayRow := Floor((DropPoint.Y - HeaderHeight) / BayRowHeight);
+    if (TargetBayRow < 0) then
+    begin
+      ShowMessage('Invalid drop location.');
+      FDraggingRect.Position.Point := FOriginalPosition;
+      Exit;
+    end;
+
+    TargetBayID := -1;
+    for var i := 0 to sbTimeline.ControlsCount - 1 do
+    begin
+      if (sbTimeline.Controls[i] is TLabel) and (TObject(sbTimeline.Controls[i]).ClassNameIs('TLabel')) then
+      begin
+        var Lbl := TLabel(sbTimeline.Controls[i]);
+        if Lbl.Tag > 0 then // Bay labels have a Tag > 0, hour labels do not
+        begin
+          if Floor((Lbl.Position.Y - HeaderHeight) / BayRowHeight) = TargetBayRow then
+          begin
+            TargetBayID := Lbl.Tag;
+            Break;
+          end;
+        end;
+      end;
+    end;
+
+    if TargetBayID = -1 then
+    begin
+      ShowMessage('Could not determine target bay.');
+      FDraggingRect.Position.Point := FOriginalPosition;
+      Exit;
+    end;
+
+    var TotalMinutes: Double;
+    TotalMinutes := (DropPoint.X - BayLabelWidth) / (PixelsPerHour / 60);
+    NewStartTime := Trunc(Now) + (TotalMinutes / (24 * 60));
+
+    qry := TADOQuery.Create(nil);
+    try
+      qry.Connection := FmOpti.ConOpti;
+      qry.SQL.Text := 'SELECT t.Duration FROM tblSchedule s INNER JOIN tblTasks t ON s.TaskID = t.TaskID WHERE s.ScheduleID = :pScheduleID';
+      qry.Parameters.ParamByName('pScheduleID').Value := ScheduleID;
+      qry.Open;
+      if qry.IsEmpty then
+      begin
+        ShowMessage('Error: Could not find task details.');
+        FDraggingRect.Position.Point := FOriginalPosition;
+        Exit;
+      end;
+      Duration := qry.FieldByName('Duration').AsInteger;
+    finally
+      qry.Free;
+    end;
+
+    NewEndTime := IncMinute(NewStartTime, Duration);
+
+    IsConflict := False;
+    qry := TADOQuery.Create(nil);
+    try
+      qry.Connection := FmOpti.ConOpti;
+      qry.SQL.Text := 'SELECT COUNT(*) AS ConflictCount FROM tblSchedule ' +
+                     'WHERE BayID = :pBayID AND ScheduleID <> :pScheduleID ' +
+                     'AND EndTime > :pNewStart AND StartTime < :pNewEnd';
+      qry.Parameters.ParamByName('pBayID').Value := TargetBayID;
+      qry.Parameters.ParamByName('pScheduleID').Value := ScheduleID;
+      qry.Parameters.ParamByName('pNewStart').Value := NewStartTime;
+      qry.Parameters.ParamByName('pNewEnd').Value := NewEndTime;
+      qry.Open;
+      if qry.FieldByName('ConflictCount').AsInteger > 0 then
+      begin
+        IsConflict := True;
+      end;
+    finally
+      qry.Free;
+    end;
+
+    if IsConflict then
+    begin
+      ShowMessage('This move creates a schedule conflict. Reverting.');
+      FDraggingRect.Position.Point := FOriginalPosition;
+    end
+    else
+    begin
+      var cmd: TADOCommand;
+      cmd := TADOCommand.Create(nil);
+      try
+        cmd.Connection := FmOpti.ConOpti;
+        cmd.CommandText := 'UPDATE tblSchedule SET BayID = :pBayID, StartTime = :pStart, EndTime = :pEnd WHERE ScheduleID = :pScheduleID';
+        cmd.Parameters.ParamByName('pBayID').Value := TargetBayID;
+        cmd.Parameters.ParamByName('pStart').Value := NewStartTime;
+        cmd.Parameters.ParamByName('pEnd').Value := NewEndTime;
+        cmd.Parameters.ParamByName('pScheduleID').Value := ScheduleID;
+        cmd.Execute;
+        ShowMessage('Task rescheduled successfully.');
+        LoadScheduledGrid;
+        DrawTimeline;
+      except
+        on E: Exception do
+        begin
+          ShowMessage('Database error on update: ' + E.Message);
+          FDraggingRect.Position.Point := FOriginalPosition;
+        end;
+      end;
+      cmd.Free;
+    end;
+
+  finally
+    FDraggingRect := nil;
+  end;
 end;
 
 end.

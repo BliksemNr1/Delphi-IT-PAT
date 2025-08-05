@@ -15,9 +15,7 @@ uses
   Reports_FRM in 'Reports_FRM.pas' {Reports},
   dmOpti in 'dmOpti.pas' {FmOpti: TDataModule},
   Scheduler_FRM in 'Scheduler_FRM.pas' {Scheduler},
-  OptiADOhelper in 'OptiADOhelper.pas',
-  NotificationBell_Frame in 'NotificationBell_Frame.pas' {rNotiBell: TFrame},
-  Notifications_FRM in 'Notifications_FRM.pas' {FNotifications};
+  OptiADOhelper in 'OptiADOhelper.pas';
 
 {$R *.res}
 
@@ -35,6 +33,5 @@ begin
   Application.CreateForm(TReports, Reports);
   Application.CreateForm(TFmOpti, FmOpti);
   Application.CreateForm(TScheduler, Scheduler);
-  Application.CreateForm(TFNotifications, FNotifications);
   Application.Run;
 end.

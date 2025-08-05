@@ -362,15 +362,6 @@
             <FormType>fmx</FormType>
         </DCCReference>
         <DCCReference Include="OptiADOhelper.pas"/>
-        <DCCReference Include="NotificationBell_Frame.pas">
-            <Form>rNotiBell</Form>
-            <FormType>fmx</FormType>
-            <DesignClass>TFrame</DesignClass>
-        </DCCReference>
-        <DCCReference Include="Notifications_FRM.pas">
-            <Form>FNotifications</Form>
-            <FormType>fmx</FormType>
-        </DCCReference>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

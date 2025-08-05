@@ -11,223 +11,319 @@ object Scheduler: TScheduler
   FormFactor.Devices = [Desktop]
   OnShow = FormCreate
   DesignerMasterStyle = 0
-  object Rectangle17: TRectangle
-    Fill.Color = xFF1F272C
-    Position.X = 221.000000000000000000
-    Position.Y = 262.000000000000000000
-    Size.Width = 558.000000000000000000
-    Size.Height = 139.000000000000000000
+  object TabControl1: TTabControl
+    Position.X = 208.000000000000000000
+    Size.Width = 592.000000000000000000
+    Size.Height = 498.000000000000000000
     Size.PlatformDefault = False
-    Stroke.Kind = None
-  end
-  object Rectangle21: TRectangle
-    Fill.Color = xFF1F272C
-    Position.X = 221.000000000000000000
-    Position.Y = 70.000000000000000000
-    Size.Width = 558.000000000000000000
-    Size.Height = 137.000000000000000000
-    Size.PlatformDefault = False
-    Stroke.Kind = None
-  end
-  object UnscheduledGrid: TStringGrid
-    CanFocus = True
-    ClipChildren = True
-    Position.X = 219.000000000000000000
-    Position.Y = 70.000000000000000000
-    Size.Width = 560.000000000000000000
-    Size.Height = 139.000000000000000000
-    Size.PlatformDefault = False
-    TabOrder = 41
-    Options = [ColumnResize, ColumnMove, ColLines, RowLines, Tabs, Header, HeaderClick, AutoDisplacement]
-    OnDrawColumnHeader = GridDrawColumnHeader
-    OnDrawColumnCell = GridDrawColumnCell
-    OnCellClick = UnscheduledGridCellClick
-    Viewport.Width = 540.000000000000000000
-    Viewport.Height = 114.000000000000000000
-    object colTaskName: TStringColumn
-      Header = 'Task Name'
-      HeaderSettings.TextSettings.WordWrap = False
-      Size.Width = 106.000000000000000000
-    end
-    object colBayType: TStringColumn
-      Header = 'Bay Type'
-      HeaderSettings.TextSettings.WordWrap = False
-      Size.Width = 106.000000000000000000
-    end
-    object colDuration: TStringColumn
-      Header = 'Duration'
-      HeaderSettings.TextSettings.WordWrap = False
-      Size.Width = 106.000000000000000000
-    end
-    object colPriority: TStringColumn
-      Header = 'Priority'
-      HeaderSettings.TextSettings.WordWrap = False
-      Size.Width = 106.000000000000000000
-    end
-    object colRequiredBay: TStringColumn
-      Header = 'Task ID'
-      HeaderSettings.TextSettings.WordWrap = False
-      Size.Width = 106.000000000000000000
-    end
-  end
-  object ScheduledGrid: TStringGrid
-    CanFocus = True
-    ClipChildren = True
-    Position.X = 221.000000000000000000
-    Position.Y = 262.000000000000000000
-    Size.Width = 558.000000000000000000
-    Size.Height = 139.000000000000000000
-    Size.PlatformDefault = False
-    TabOrder = 42
-    Options = [ColumnResize, ColumnMove, ColLines, RowLines, Tabs, Header, HeaderClick, AutoDisplacement]
-    OnDrawColumnHeader = GridDrawColumnHeader
-    OnDrawColumnCell = GridDrawColumnCell
-    OnCellClick = ScheduledGridCellClick
-    Viewport.Width = 538.000000000000000000
-    Viewport.Height = 114.000000000000000000
-    object colBayName: TStringColumn
-      Header = 'Bay Name'
-      HeaderSettings.TextSettings.WordWrap = False
-      Size.Width = 106.000000000000000000
-    end
-    object colTaskenameScheduled: TStringColumn
-      Header = 'Task Name'
-      HeaderSettings.TextSettings.WordWrap = False
-      Size.Width = 106.000000000000000000
-    end
-    object colStartTime: TStringColumn
-      Header = 'Start Time'
-      HeaderSettings.TextSettings.WordWrap = False
-      Size.Width = 106.000000000000000000
-    end
-    object colEndTime: TStringColumn
-      Header = 'End Time'
-      HeaderSettings.TextSettings.WordWrap = False
-      Size.Width = 106.000000000000000000
-    end
-    object ColStatus: TStringColumn
-      Header = 'Status'
-      HeaderSettings.TextSettings.WordWrap = False
-      Size.Width = 106.000000000000000000
-    end
-  end
-  object labels: TLabel
-    Cursor = crArrow
-    StyledSettings = []
-    HitTest = True
-    Position.X = 219.000000000000000000
-    Position.Y = 40.000000000000000000
-    Size.Width = 198.000000000000000000
-    Size.Height = 22.000000000000000000
-    Size.PlatformDefault = False
-    TextSettings.Font.Family = 'Roboto'
-    TextSettings.Font.Size = 20.000000000000000000
-    TextSettings.Font.StyleExt = {00050000000000000004000000}
-    TextSettings.FontColor = xFFF8F9FA
-    Text = 'Unscheduled tasks'
-    TabOrder = 45
-  end
-  object Label1: TLabel
-    Cursor = crArrow
-    StyledSettings = []
-    HitTest = True
-    Position.X = 221.000000000000000000
-    Position.Y = 230.000000000000000000
-    Size.Width = 198.000000000000000000
-    Size.Height = 33.000000000000000000
-    Size.PlatformDefault = False
-    TextSettings.Font.Family = 'Roboto'
-    TextSettings.Font.Size = 20.000000000000000000
-    TextSettings.Font.StyleExt = {00050000000000000004000000}
-    TextSettings.FontColor = xFFF8F9FA
-    Text = 'Scheduled Tasks'
-    TabOrder = 44
-  end
-  object rOptimize: TRectangle
-    Cursor = crHandPoint
-    Fill.Color = xFF0D3C6E
-    Position.X = 223.000000000000000000
-    Position.Y = 435.000000000000000000
-    Size.Width = 154.000000000000000000
-    Size.Height = 41.000000000000000000
-    Size.PlatformDefault = False
-    Stroke.Color = xFF74858E
-    Stroke.Thickness = 0.750000000000000000
-    XRadius = 6.000000000000000000
-    YRadius = 6.000000000000000000
-    OnClick = rOptimizeClick
-    object Label4: TLabel
-      Align = Center
-      Cursor = crHandPoint
-      StyledSettings = []
-      Size.Width = 125.000000000000000000
-      Size.Height = 41.000000000000000000
+    StyleLookup = 'TabControl1Style1'
+    TabIndex = 0
+    TabOrder = 50
+    TabPosition = PlatformDefault
+    OnChange = TabControl1Change
+    Sizes = (
+      592s
+      472s
+      592s
+      472s)
+    object tiListView: TTabItem
+      CustomIcon = <
+        item
+        end>
+      TextSettings.Trimming = None
+      IsSelected = True
+      Size.Width = 67.000000000000000000
+      Size.Height = 26.000000000000000000
       Size.PlatformDefault = False
-      TextSettings.Font.Family = 'Sans Serif Collection'
-      TextSettings.Font.Size = 20.000000000000000000
-      TextSettings.Font.StyleExt = {00070000000000000004000000}
-      TextSettings.FontColor = xFF007BFF
-      TextSettings.HorzAlign = Center
-      Text = 'Optimize'
-      TabOrder = 33
+      StyleLookup = 'TabItem1Style1'
+      TabOrder = 0
+      Text = 'List View'
+      object Rectangle1: TRectangle
+        Align = Contents
+        Fill.Color = xFF2C383D
+        Size.Width = 592.000000000000000000
+        Size.Height = 472.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Kind = None
+      end
+      object Label1: TLabel
+        Cursor = crArrow
+        StyledSettings = []
+        HitTest = True
+        Position.X = 10.000000000000000000
+        Position.Y = 212.000000000000000000
+        Size.Width = 198.000000000000000000
+        Size.Height = 33.000000000000000000
+        Size.PlatformDefault = False
+        TextSettings.Font.Family = 'Roboto'
+        TextSettings.Font.Size = 20.000000000000000000
+        TextSettings.Font.StyleExt = {00050000000000000004000000}
+        TextSettings.FontColor = xFFF8F9FA
+        Text = 'Scheduled Tasks'
+        TabOrder = 44
+      end
+      object labels: TLabel
+        Cursor = crArrow
+        StyledSettings = []
+        HitTest = True
+        Position.X = 10.000000000000000000
+        Position.Y = 31.000000000000000000
+        Size.Width = 198.000000000000000000
+        Size.Height = 22.000000000000000000
+        Size.PlatformDefault = False
+        TextSettings.Font.Family = 'Roboto'
+        TextSettings.Font.Size = 20.000000000000000000
+        TextSettings.Font.StyleExt = {00050000000000000004000000}
+        TextSettings.FontColor = xFFF8F9FA
+        Text = 'Unscheduled tasks'
+        TabOrder = 45
+      end
+      object rCancelTask: TRectangle
+        Cursor = crHandPoint
+        Fill.Color = xFF1F272C
+        Position.X = 447.000000000000000000
+        Position.Y = 417.000000000000000000
+        Size.Width = 124.000000000000000000
+        Size.Height = 41.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Color = xFF74858E
+        Stroke.Thickness = 0.750000000000000000
+        XRadius = 6.000000000000000000
+        YRadius = 6.000000000000000000
+        OnClick = rCancelTaskClick
+        object Label2: TLabel
+          Align = Center
+          Cursor = crArrow
+          StyledSettings = []
+          Size.Width = 124.000000000000000000
+          Size.Height = 41.000000000000000000
+          Size.PlatformDefault = False
+          TextSettings.Font.Family = 'Sans Serif Collection'
+          TextSettings.Font.Size = 16.000000000000000000
+          TextSettings.Font.StyleExt = {00070000000000000004000000}
+          TextSettings.FontColor = claBrown
+          TextSettings.HorzAlign = Center
+          Text = 'Cancel Task'
+          TabOrder = 27
+        end
+      end
+      object Rectangle17: TRectangle
+        Fill.Color = xFF1F272C
+        Position.X = 10.000000000000000000
+        Position.Y = 253.000000000000000000
+        Size.Width = 558.000000000000000000
+        Size.Height = 139.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Kind = None
+      end
+      object Rectangle21: TRectangle
+        Fill.Color = xFF1F272C
+        Position.X = 10.000000000000000000
+        Position.Y = 61.000000000000000000
+        Size.Width = 558.000000000000000000
+        Size.Height = 137.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Kind = None
+      end
+      object rManualAssign: TRectangle
+        Cursor = crHandPoint
+        Fill.Color = xFF9D7C17
+        Position.X = 154.000000000000000000
+        Position.Y = 417.000000000000000000
+        Size.Width = 124.000000000000000000
+        Size.Height = 41.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Color = xFF74858E
+        Stroke.Thickness = 0.750000000000000000
+        XRadius = 6.000000000000000000
+        YRadius = 6.000000000000000000
+        OnClick = rManualAssignClick
+        object Label6: TLabel
+          Align = Center
+          Cursor = crArrow
+          StyledSettings = []
+          Size.Width = 131.000000000000000000
+          Size.Height = 41.000000000000000000
+          Size.PlatformDefault = False
+          TextSettings.Font.Family = 'Sans Serif Collection'
+          TextSettings.Font.Size = 16.000000000000000000
+          TextSettings.Font.StyleExt = {00070000000000000004000000}
+          TextSettings.FontColor = xFFFFBF00
+          TextSettings.HorzAlign = Center
+          Text = 'Manual Assign'
+          TabOrder = 19
+        end
+      end
+      object rMarkComplete: TRectangle
+        Cursor = crHandPoint
+        Fill.Color = xFF1F272C
+        Position.X = 301.000000000000000000
+        Position.Y = 417.000000000000000000
+        Size.Width = 124.000000000000000000
+        Size.Height = 41.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Color = xFF74858E
+        Stroke.Thickness = 0.750000000000000000
+        XRadius = 6.000000000000000000
+        YRadius = 6.000000000000000000
+        OnClick = rMarkCompleteClick
+        object Label5: TLabel
+          Align = Center
+          Cursor = crArrow
+          StyledSettings = []
+          Size.Width = 139.000000000000000000
+          Size.Height = 41.000000000000000000
+          Size.PlatformDefault = False
+          TextSettings.Font.Family = 'Sans Serif Collection'
+          TextSettings.Font.Size = 16.000000000000000000
+          TextSettings.Font.StyleExt = {00070000000000000004000000}
+          TextSettings.FontColor = xFFF8F9FA
+          TextSettings.HorzAlign = Center
+          Text = 'Mark Complete'
+          TabOrder = 27
+        end
+      end
+      object rOptimize: TRectangle
+        Cursor = crHandPoint
+        Fill.Color = xFF0D3C6E
+        Position.X = 10.000000000000000000
+        Position.Y = 417.000000000000000000
+        Size.Width = 124.000000000000000000
+        Size.Height = 41.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Color = xFF74858E
+        Stroke.Thickness = 0.750000000000000000
+        XRadius = 6.000000000000000000
+        YRadius = 6.000000000000000000
+        OnClick = rOptimizeClick
+        object Label4: TLabel
+          Align = Center
+          Cursor = crHandPoint
+          StyledSettings = []
+          Size.Width = 82.000000000000000000
+          Size.Height = 41.000000000000000000
+          Size.PlatformDefault = False
+          TextSettings.Font.Family = 'Sans Serif Collection'
+          TextSettings.Font.Size = 16.000000000000000000
+          TextSettings.Font.StyleExt = {00070000000000000004000000}
+          TextSettings.FontColor = xFF007BFF
+          TextSettings.HorzAlign = Center
+          Text = 'Optimize'
+          TabOrder = 33
+        end
+      end
+      object ScheduledGrid: TStringGrid
+        CanFocus = True
+        ClipChildren = True
+        Position.X = 10.000000000000000000
+        Position.Y = 253.000000000000000000
+        Size.Width = 558.000000000000000000
+        Size.Height = 139.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 42
+        Options = [ColumnResize, ColumnMove, ColLines, RowLines, Tabs, Header, HeaderClick, AutoDisplacement]
+        OnDrawColumnHeader = GridDrawColumnHeader
+        OnDrawColumnCell = GridDrawColumnCell
+        OnCellClick = ScheduledGridCellClick
+        Viewport.Width = 538.000000000000000000
+        Viewport.Height = 114.000000000000000000
+        object colBayName: TStringColumn
+          Header = 'Bay Name'
+          HeaderSettings.TextSettings.WordWrap = False
+          Size.Width = 106.000000000000000000
+        end
+        object colTaskenameScheduled: TStringColumn
+          Header = 'Task Name'
+          HeaderSettings.TextSettings.WordWrap = False
+          Size.Width = 106.000000000000000000
+        end
+        object colStartTime: TStringColumn
+          Header = 'Start Time'
+          HeaderSettings.TextSettings.WordWrap = False
+          Size.Width = 106.000000000000000000
+        end
+        object colEndTime: TStringColumn
+          Header = 'End Time'
+          HeaderSettings.TextSettings.WordWrap = False
+          Size.Width = 106.000000000000000000
+        end
+        object ColStatus: TStringColumn
+          Header = 'Status'
+          HeaderSettings.TextSettings.WordWrap = False
+          Size.Width = 106.000000000000000000
+        end
+      end
+      object UnscheduledGrid: TStringGrid
+        CanFocus = True
+        ClipChildren = True
+        Position.X = 11.000000000000000000
+        Position.Y = 61.000000000000000000
+        Size.Width = 560.000000000000000000
+        Size.Height = 139.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 41
+        Options = [ColumnResize, ColumnMove, ColLines, RowLines, Tabs, Header, HeaderClick, AutoDisplacement]
+        OnDrawColumnHeader = GridDrawColumnHeader
+        OnDrawColumnCell = GridDrawColumnCell
+        OnCellClick = UnscheduledGridCellClick
+        Viewport.Width = 540.000000000000000000
+        Viewport.Height = 114.000000000000000000
+        object colTaskName: TStringColumn
+          Header = 'Task Name'
+          HeaderSettings.TextSettings.WordWrap = False
+          Size.Width = 106.000000000000000000
+        end
+        object colBayType: TStringColumn
+          Header = 'Bay Type'
+          HeaderSettings.TextSettings.WordWrap = False
+          Size.Width = 106.000000000000000000
+        end
+        object colDuration: TStringColumn
+          Header = 'Duration'
+          HeaderSettings.TextSettings.WordWrap = False
+          Size.Width = 106.000000000000000000
+        end
+        object colPriority: TStringColumn
+          Header = 'Priority'
+          HeaderSettings.TextSettings.WordWrap = False
+          Size.Width = 106.000000000000000000
+        end
+        object colRequiredBay: TStringColumn
+          Header = 'Task ID'
+          HeaderSettings.TextSettings.WordWrap = False
+          Size.Width = 106.000000000000000000
+        end
+      end
     end
-  end
-  object rManualAssign: TRectangle
-    Cursor = crHandPoint
-    Fill.Color = xFF9D7C17
-    Position.X = 426.000000000000000000
-    Position.Y = 435.000000000000000000
-    Size.Width = 154.000000000000000000
-    Size.Height = 41.000000000000000000
-    Size.PlatformDefault = False
-    Stroke.Color = xFF74858E
-    Stroke.Thickness = 0.750000000000000000
-    XRadius = 6.000000000000000000
-    YRadius = 6.000000000000000000
-    OnClick = rManualAssignClick
-    object Label6: TLabel
-      Align = Center
-      Cursor = crArrow
-      StyledSettings = []
-      Size.Width = 146.000000000000000000
-      Size.Height = 41.000000000000000000
+    object tiTimelineView: TTabItem
+      CustomIcon = <
+        item
+        end>
+      TextSettings.Trimming = None
+      IsSelected = False
+      Size.Width = 94.000000000000000000
+      Size.Height = 26.000000000000000000
       Size.PlatformDefault = False
-      TextSettings.Font.Family = 'Sans Serif Collection'
-      TextSettings.Font.Size = 20.000000000000000000
-      TextSettings.Font.StyleExt = {00070000000000000004000000}
-      TextSettings.FontColor = xFFFFBF00
-      TextSettings.HorzAlign = Center
-      Text = 'Manual Assign'
-      TabOrder = 19
-    end
-  end
-  object rMarkComplete: TRectangle
-    Cursor = crHandPoint
-    Fill.Color = xFF1F272C
-    Position.X = 625.000000000000000000
-    Position.Y = 435.000000000000000000
-    Size.Width = 154.000000000000000000
-    Size.Height = 41.000000000000000000
-    Size.PlatformDefault = False
-    Stroke.Color = xFF74858E
-    Stroke.Thickness = 0.750000000000000000
-    XRadius = 6.000000000000000000
-    YRadius = 6.000000000000000000
-    OnClick = rMarkCompleteClick
-    object Label5: TLabel
-      Align = Center
-      Cursor = crArrow
-      StyledSettings = []
-      Size.Width = 150.000000000000000000
-      Size.Height = 41.000000000000000000
-      Size.PlatformDefault = False
-      TextSettings.Font.Family = 'Sans Serif Collection'
-      TextSettings.Font.Size = 20.000000000000000000
-      TextSettings.Font.StyleExt = {00070000000000000004000000}
-      TextSettings.FontColor = xFFF8F9FA
-      TextSettings.HorzAlign = Center
-      Text = 'Mark Complete'
-      TabOrder = 27
+      StyleLookup = ''
+      TabOrder = 0
+      Text = 'Timeline View'
+      object Rectangle2: TRectangle
+        Align = Contents
+        Fill.Color = xFF2C383D
+        Size.Width = 592.000000000000000000
+        Size.Height = 472.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Kind = None
+        object sbTimeline: TScrollBox
+          Align = Contents
+          Size.Width = 592.000000000000000000
+          Size.Height = 472.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 0
+          Viewport.Width = 592.000000000000000000
+          Viewport.Height = 472.000000000000000000
+        end
+      end
     end
   end
   object rLogoImage: TRectangle
@@ -3521,7 +3617,7 @@ object Scheduler: TScheduler
   object LogoutBtn: TEdit
     Touch.InteractiveGestures = [LongTap, DoubleTap]
     StyleLookup = 'Edit1Style1'
-    TabOrder = 16
+    TabOrder = 14
     ReadOnly = True
     Text = 'Log Out'
     TextSettings.Font.Family = 'Sans Serif Collection'

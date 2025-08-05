@@ -172,9 +172,12 @@ begin
   cbPriority.ItemIndex := -1;
 end;
 
+// *** UPDATED PROCEDURE ***
 procedure TFTaskManagement.raddClick(Sender: TObject);
+var
+  LTaskDuration: Integer; // Variable to hold the validated duration
 begin
-  // --- Input Validation ---
+  // --- Enhanced Input Validation (General) ---
   if (lbltname.Text = '') or (cbPriority.ItemIndex = -1) or
      (cbbayType.ItemIndex = -1) or (lblDuration.Text = '') then
   begin
@@ -182,10 +185,20 @@ begin
     Exit;
   end;
 
+  // --- NEW: Specific validation for Task Duration ---
+  if not TryStrToInt(lblDuration.Text, LTaskDuration) or (LTaskDuration <= 0) then
+  begin
+    ShowMessage('Please enter a valid, positive number for the Duration (in minutes).');
+    lblDuration.SetFocus; // Guide the user to the incorrect field
+    Exit;
+  end;
+  // --- END NEW ---
+
   try
     FmOpti.optiTasks.Append;
     FmOpti.optiTasks.FieldByName('TaskName').AsString := lbltname.Text;
-    FmOpti.optiTasks.FieldByName('Duration').AsInteger := StrToIntDef(lblDuration.Text, 0);
+    // Use the validated LTaskDuration variable instead of converting directly
+    FmOpti.optiTasks.FieldByName('Duration').AsInteger := LTaskDuration;
     FmOpti.optiTasks.FieldByName('Priority').AsString := cbPriority.Text;
     FmOpti.optiTasks.FieldByName('BayType').AsString := cbbayType.Text;
     FmOpti.optiTasks.FieldByName('Status').AsString := 'Pending';
@@ -231,15 +244,34 @@ begin
   end;
 end;
 
+// *** UPDATED PROCEDURE ***
 procedure TFTaskManagement.rEditClick(Sender: TObject);
 var
   LTaskID: Integer;
+  LTaskDuration: Integer; // Variable to hold the validated duration
 begin
   if SelectedTaskRow < 0 then
   begin
     ShowMessage('Please select a task to edit.');
     Exit;
   end;
+
+  // --- Enhanced Input Validation (General) ---
+  if (lbltname.Text = '') or (cbPriority.ItemIndex = -1) or
+     (cbbayType.ItemIndex = -1) or (lblDuration.Text = '') then
+  begin
+    ShowMessage('Please ensure all fields are filled correctly before updating.');
+    Exit;
+  end;
+
+  // --- NEW: Specific validation for Task Duration ---
+  if not TryStrToInt(lblDuration.Text, LTaskDuration) or (LTaskDuration <= 0) then
+  begin
+    ShowMessage('Please enter a valid, positive number for the Duration (in minutes).');
+    lblDuration.SetFocus; // Guide the user to the incorrect field
+    Exit;
+  end;
+  // --- END NEW ---
 
   LTaskID := FTaskIDs[SelectedTaskRow];
 
@@ -248,7 +280,8 @@ begin
     try
       FmOpti.optiTasks.Edit;
       FmOpti.optiTasks.FieldByName('TaskName').AsString := lbltname.Text;
-      FmOpti.optiTasks.FieldByName('Duration').AsInteger := StrToIntDef(lblDuration.Text, 0);
+      // Use the validated LTaskDuration variable
+      FmOpti.optiTasks.FieldByName('Duration').AsInteger := LTaskDuration;
       FmOpti.optiTasks.FieldByName('Priority').AsString := cbPriority.Text;
       FmOpti.optiTasks.FieldByName('BayType').AsString := cbbayType.Text;
       // --- Update the Deadline ---
